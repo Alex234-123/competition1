@@ -9,6 +9,7 @@
  */
 import type { Asset, Document } from "../ir/types.js";
 import type { PlatformAdapter, RehostContext } from "../adapters/types.js";
+import { AssetTable } from "./asset-table.js";
 
 /** 判断资产是否为可重托管的真实图片(排除变换生成的占位/平台原生资产)。 */
 function isRehostable(asset: Asset): boolean {
@@ -28,19 +29,40 @@ function isRehostable(asset: Asset): boolean {
  * @param adapter 目标平台适配器(提供 rehostAsset 策略)
  * @param doc 已 preprocess 的文档
  * @param ctx 重托管上下文(含注入的 upload)
+ * @param assetTable 可选;传入时经 AssetTable.recordRehost 回填,未传入时退化为不可变 spread
  * @returns 资产已回填 rehosted[platformId] 的新文档
  */
 export async function rehostDocumentAssets(
   adapter: PlatformAdapter,
   doc: Document,
   ctx: RehostContext,
+  assetTable?: AssetTable,
 ): Promise<Document> {
   const imageAssets = doc.assets.filter((a) => a.kind === "image" && isRehostable(a));
   if (imageAssets.length === 0) return doc;
 
+  if (assetTable) {
+    // 首选路径:经 AssetTable.recordRehost 规范化回填,确保资产表感知所有重托管记录。
+    for (const asset of imageAssets) {
+      if (asset.rehosted[ctx.platformId]) continue;
+      try {
+        const result = await adapter.rehostAsset(asset, ctx);
+        if (result.url || result.mediaId) {
+          assetTable.recordRehost(asset.id, ctx.platformId, {
+            url: result.url,
+            mediaId: result.mediaId,
+          });
+        }
+      } catch {
+        // 单图失败不阻断:保留原始引用,由校验/序列化层决定降级。
+      }
+    }
+    return { ...doc, assets: assetTable.all() };
+  }
+
+  // 退化路径:当未传入 assetTable 时,用不可变 spread 回填(向后兼容现有测试与 demo)。
   const updates = new Map<string, Asset>();
   for (const asset of imageAssets) {
-    // 已有该平台重托管结果则跳过(幂等)。
     if (asset.rehosted[ctx.platformId]) continue;
     try {
       const result = await adapter.rehostAsset(asset, ctx);

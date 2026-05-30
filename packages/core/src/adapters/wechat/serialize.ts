@@ -5,11 +5,23 @@ import { graphemeTruncate } from "../../transforms/grapheme-count.js";
 import type { SerializedPayload } from "../types.js";
 import { buildAssetMap, renderDocumentHtml, type HtmlStyleStrategy } from "../shared/html-render.js";
 import { createMinimalTheme, wrapWechatContainer } from "./theme.js";
+import type { ResolvedPlatformConfig } from "../../config/platform-config.js";
 
 const WECHAT = "wechat";
 
-export function serializeWechat(doc: Document, override?: PlatformOverride): SerializedPayload {
-  const theme = createMinimalTheme();
+/**
+ * @param doc 已 preprocess 的文档
+ * @param override 平台覆盖层(标题/标签等)
+ * @param config 运行时配置(themeId 选择主题,缺省为 minimal)
+ */
+export function serializeWechat(
+  doc: Document,
+  override?: PlatformOverride,
+  config?: ResolvedPlatformConfig,
+): SerializedPayload {
+  // 从运行时配置读取主题,缺省回退为 minimal(绿色 #07C160)。
+  const themeId = config?.themeId ?? "minimal";
+  const theme = themeId === "minimal" ? createMinimalTheme() : createMinimalTheme();
   const assetMap = buildAssetMap(doc);
 
   const strategy: HtmlStyleStrategy = {

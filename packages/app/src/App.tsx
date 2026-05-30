@@ -27,6 +27,7 @@ export function App() {
   const history = useStore((s) => s.history);
   const llm = useStore((s) => s.llm);
   const enhance = useStore((s) => s.enhance);
+  const serverUrl = useStore((s) => s.serverUrl);
   const env = useStore((s) => s.bridge?.env);
   // 行为(action)引用恒定,用 useShallow 一次性取出,不引入额外渲染。
   const actions = useStore(
@@ -38,6 +39,7 @@ export function App() {
       insertLocalImage: s.insertLocalImage,
       setLlm: s.setLlm,
       setEnhance: s.setEnhance,
+      setServerUrl: s.setServerUrl,
       llmReady: s.llmReady,
       adapt: s.adapt,
       publishAll: s.publishAll,
@@ -74,7 +76,7 @@ export function App() {
   }, [markdown, authorName, tags]);
 
   const ready = actions.llmReady();
-  const aiEnabled = ready && (enhance.title || enhance.summary || enhance.colloquialize);
+  const aiEnabled = ready && (enhance.title || enhance.summary || enhance.colloquialize || enhance.rewrite);
 
   return (
     <Tooltip.Provider delayDuration={300}>
@@ -203,8 +205,10 @@ export function App() {
           llm={llm}
           enhance={enhance}
           ready={ready}
+          serverUrl={serverUrl}
           onLlm={actions.setLlm}
           onEnhance={actions.setEnhance}
+          onServerUrl={actions.setServerUrl}
         />
         <DraftsDrawer
           open={draftsOpen}

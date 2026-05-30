@@ -25,12 +25,26 @@ function detectBridge(): PlatformBridge {
 const bridge = detectBridge();
 useStore.getState().setBridge(bridge);
 
-// 从本地存储恢复 LLM 设置(apiKey 仅存本地)。
+// 从本地存储恢复 LLM / serverUrl / enhance 设置(仅存本地)。
 void bridge.getSetting("mpp.llm").then((raw) => {
   if (!raw) return;
   try {
     const saved = JSON.parse(raw) as Partial<{ baseUrl: string; apiKey: string; model: string }>;
     useStore.setState((s) => ({ llm: { ...s.llm, ...saved } }));
+  } catch {
+    /* 忽略损坏的设置 */
+  }
+});
+
+void bridge.getSetting("mpp.serverUrl").then((raw) => {
+  if (raw) useStore.setState({ serverUrl: raw });
+});
+
+void bridge.getSetting("mpp.enhance").then((raw) => {
+  if (!raw) return;
+  try {
+    const saved = JSON.parse(raw) as Partial<{ title?: boolean; summary?: boolean; colloquialize?: boolean; rewrite?: boolean }>;
+    useStore.setState((s) => ({ enhance: { ...s.enhance, ...saved } }));
   } catch {
     /* 忽略损坏的设置 */
   }

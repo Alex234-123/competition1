@@ -137,14 +137,21 @@ export const useStore = create<AppState>((set, get) => ({
     set({ tags });
     get().adapt();
   },
-  setServerUrl: (url) => set({ serverUrl: url }),
+  setServerUrl: (url) => {
+    set({ serverUrl: url });
+    void get().bridge?.setSetting("mpp.serverUrl", url);
+  },
   setLlm: (patch) => {
     const llm = { ...get().llm, ...patch };
     set({ llm });
     // apiKey 等只存本地(localStorage/chrome.storage),绝不入库。
     void get().bridge?.setSetting("mpp.llm", JSON.stringify(llm));
   },
-  setEnhance: (patch) => set({ enhance: { ...get().enhance, ...patch } }),
+  setEnhance: (patch) => {
+    const merged = { ...get().enhance, ...patch };
+    set({ enhance: merged });
+    void get().bridge?.setSetting("mpp.enhance", JSON.stringify(merged));
+  },
   llmReady: () => {
     const { baseUrl, apiKey, model } = get().llm;
     return !!baseUrl && !!apiKey && !!model;
@@ -164,12 +171,13 @@ export const useStore = create<AppState>((set, get) => ({
 
   adapt: () => {
     const { markdown, authorName, tags, selectedPlatforms } = get();
-    const { document } = markdownToIR(markdown, {
+    const { document, assetTable } = markdownToIR(markdown, {
       meta: { authorName, tags, canonicalUrl: "https://example.com/post" },
     });
     // stageOnly:只产出暂存产物用于预览,不模拟发布。
     void syncToPlatforms(document, selectedPlatforms, {
       stageOnly: true,
+      assetTable,
       now: () => new Date().toISOString(),
     }).then((results) => set({ results }));
   },
@@ -177,7 +185,7 @@ export const useStore = create<AppState>((set, get) => ({
   publishAll: async () => {
     const { markdown, authorName, tags, selectedPlatforms, bridge, serverUrl } = get();
     set({ publishing: true, receipts: {} });
-    const { document } = markdownToIR(markdown, {
+    const { document, assetTable } = markdownToIR(markdown, {
       meta: { authorName, tags, canonicalUrl: "https://example.com/post" },
     });
 
@@ -214,6 +222,7 @@ export const useStore = create<AppState>((set, get) => ({
     const results = await syncToPlatforms(document, selectedPlatforms, {
       now: () => new Date().toISOString(),
       rehost,
+      assetTable,
       ...buildLlmOptions(get()),
     });
     const receipts: Record<string, string> = {};
@@ -296,7 +305,7 @@ export const useStore = create<AppState>((set, get) => ({
 
 /** 构造 LLM 增强选项:llmReady 且启用了增强项时,注入 OpenAiCompatLlm。 */
 function buildLlmOptions(state: AppState): { llm?: OpenAiCompatLlm; enhance?: EnhanceOptions } {
-  const enhanceEnabled = state.enhance.title || state.enhance.summary || state.enhance.colloquialize;
+  const enhanceEnabled = state.enhance.title || state.enhance.summary || state.enhance.colloquialize || state.enhance.rewrite;
   if (!state.llmReady() || !enhanceEnabled) return {};
   return {
     llm: new OpenAiCompatLlm(state.llm),

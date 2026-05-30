@@ -12,10 +12,12 @@ import type { ValidationReport } from "../validate/types.js";
 import { MockPublisher } from "../publish/mock-publisher.js";
 import type { PublishArtifact, PublishContext, Publisher, PublishReceipt } from "../publish/types.js";
 import type { PlatformConfigMap } from "../config/platform-config.js";
+import { resolveConfig } from "../config/platform-config.js";
 import type { RehostContext } from "../adapters/types.js";
 import { rehostDocumentAssets } from "../assets/rehost-engine.js";
 import type { LlmAdapter } from "../llm/types.js";
 import { enhancePayload, type EnhanceOptions } from "../llm/enhance.js";
+import type { AssetTable } from "../assets/asset-table.js";
 
 export interface PlatformResult {
   readonly platformId: string;
@@ -46,6 +48,8 @@ export interface SyncOptions {
   readonly llm?: LlmAdapter;
   /** LLM 增强项(启用哪些字段);需 llm 可用方生效。 */
   readonly enhance?: EnhanceOptions;
+  /** 资产表(解析阶段产出);传入后经 recordRehost 规范化回填重托管记录。 */
+  readonly assetTable?: AssetTable;
   /** 时间戳注入。 */
   readonly now?: () => string;
 }
@@ -90,9 +94,11 @@ async function processPlatform(
     // 结果回填 IR,使 serialize 的 resolveImageSrc 取到平台 URL。
     const rehostCtx = options.rehost?.[platformId];
     if (rehostCtx) {
-      processed = await rehostDocumentAssets(adapter, processed, rehostCtx);
+      processed = await rehostDocumentAssets(adapter, processed, rehostCtx, options.assetTable);
     }
-    const payload = adapter.serialize(processed, override);
+    // 解析运行时配置(主题/排版等),serialize 层据此选择主题。
+    const resolvedConfig = config ? resolveConfig(adapter.capabilities.limits, config) : undefined;
+    const payload = adapter.serialize(processed, override, resolvedConfig);
     // LLM 增强阶段(异步,可选):注入了可用 llm 且指定 enhance 项时,做风格改写。
     let finalPayload = payload;
     if (options.llm && options.enhance) {

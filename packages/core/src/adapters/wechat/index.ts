@@ -2,6 +2,7 @@
 import type { Capabilities, Document, PlatformOverride } from "../../ir/types.js";
 import { BaseAdapter } from "../base-adapter.js";
 import type { SerializedPayload } from "../types.js";
+import type { ResolvedPlatformConfig } from "../../config/platform-config.js";
 import { wechatCapabilities } from "./capabilities.js";
 import { serializeWechat } from "./serialize.js";
 
@@ -10,7 +11,11 @@ export class WechatAdapter extends BaseAdapter {
   readonly name = "微信公众号";
   readonly capabilities: Capabilities = wechatCapabilities;
 
-  protected serializeRaw(doc: Document, override?: PlatformOverride): SerializedPayload {
-    return serializeWechat(doc, override);
+  protected serializeRaw(
+    doc: Document,
+    override?: PlatformOverride,
+    config?: ResolvedPlatformConfig,
+  ): SerializedPayload {
+    return serializeWechat(doc, override, config);
   }
 }

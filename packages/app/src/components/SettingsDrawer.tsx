@@ -1,6 +1,6 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Switch from "@radix-ui/react-switch";
-import { X, Sparkles, KeyRound } from "lucide-react";
+import { X, Sparkles, KeyRound, Image } from "lucide-react";
 import type { EnhanceOptions } from "@mpp/core";
 
 interface LlmSettings {
@@ -15,18 +15,31 @@ interface Props {
   llm: LlmSettings;
   enhance: EnhanceOptions;
   ready: boolean;
+  serverUrl: string;
   onLlm: (patch: Partial<LlmSettings>) => void;
   onEnhance: (patch: Partial<EnhanceOptions>) => void;
+  onServerUrl: (url: string) => void;
 }
 
 const ENHANCE_ITEMS: { key: keyof EnhanceOptions; title: string; desc: string }[] = [
   { key: "title", title: "优化标题", desc: "让标题更吸引点击" },
   { key: "summary", title: "生成摘要", desc: "自动提炼公众号摘要" },
   { key: "colloquialize", title: "口语化改写", desc: "小红书风格更亲切" },
+  { key: "rewrite", title: "全文润色", desc: "优化 HTML 平台正文表达" },
 ];
 
-/** AI 设置抽屉:LLM 配置(OpenAI 兼容)+ 增强开关。apiKey 仅存本地。 */
-export function SettingsDrawer({ open, onOpenChange, llm, enhance, ready, onLlm, onEnhance }: Props) {
+/** AI 设置抽屉:LLM 配置(OpenAI 兼容)+ 增强开关 + 图床配置。apiKey 仅存本地。 */
+export function SettingsDrawer({
+  open,
+  onOpenChange,
+  llm,
+  enhance,
+  ready,
+  serverUrl,
+  onLlm,
+  onEnhance,
+  onServerUrl,
+}: Props) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
@@ -53,6 +66,9 @@ export function SettingsDrawer({ open, onOpenChange, llm, enhance, ready, onLlm,
                 placeholder="https://api.deepseek.com/v1"
                 onChange={(e) => onLlm({ baseUrl: e.target.value })}
               />
+              <small className="field-hint">
+                服务地址，如 https://api.openai.com/v1 或 https://api.deepseek.com/v1
+              </small>
             </label>
             <label className="field">
               <span className="field-label">
@@ -67,6 +83,9 @@ export function SettingsDrawer({ open, onOpenChange, llm, enhance, ready, onLlm,
                 autoComplete="off"
                 onChange={(e) => onLlm({ apiKey: e.target.value })}
               />
+              <small className="field-hint">
+                在模型平台控制台创建，如 platform.openai.com/api-keys
+              </small>
             </label>
             <label className="field">
               <span className="field-label">模型</span>
@@ -76,6 +95,7 @@ export function SettingsDrawer({ open, onOpenChange, llm, enhance, ready, onLlm,
                 placeholder="deepseek-chat"
                 onChange={(e) => onLlm({ model: e.target.value })}
               />
+              <small className="field-hint">如 gpt-4o / deepseek-chat / kimi-latest / qwen-turbo</small>
             </label>
 
             <div className="tag tag-neutral" style={{ alignSelf: "flex-start" }}>
@@ -101,6 +121,25 @@ export function SettingsDrawer({ open, onOpenChange, llm, enhance, ready, onLlm,
                 </div>
               ))}
             </div>
+
+            {/* 图床配置 */}
+            <div style={{ borderTop: "1px solid var(--border)", margin: 0 }} />
+            <h3 style={{ fontSize: "var(--fs-sm)", fontWeight: 650, margin: 0, display: "flex", alignItems: "center", gap: "var(--sp-1)" }}>
+              <Image size={14} aria-hidden />
+              图床配置
+            </h3>
+            <label className="field">
+              <span className="field-label">上传服务地址</span>
+              <input
+                className="field-input"
+                value={serverUrl}
+                placeholder="http://127.0.0.1:8787"
+                onChange={(e) => onServerUrl(e.target.value)}
+              />
+              <small className="field-hint">
+                图片上传服务地址，本地开发默认 http://127.0.0.1:8787
+              </small>
+            </label>
           </div>
         </Dialog.Content>
       </Dialog.Portal>
