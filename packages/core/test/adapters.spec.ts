@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { markdownToIR } from "../src/parse/md-to-ir.js";
 import { getAdapter, listAdapters, listPlatformIds } from "../src/adapters/registry.js";
+import { createMinimalTheme } from "../src/adapters/wechat/theme.js";
+import { instructionsFor } from "../src/publish/instructions.js";
 
 const SAMPLE = `# 一篇关于效率工具的分享
 
@@ -113,5 +115,25 @@ describe("小红书适配器", () => {
     const payload = a.serialize(a.preprocess(doc));
     expect(payload.extra?.["overflow"]).toBe(true);
     expect([...payload.content].length).toBeLessThanOrEqual(1000);
+  });
+});
+
+describe("公众号主题", () => {
+  it("未知标签返回空字符串", () => {
+    const theme = createMinimalTheme();
+    expect(theme.styleFor("nonexistent-tag")).toBe("");
+  });
+});
+
+describe("instructionsFor", () => {
+  it("已知平台返回指引", () => {
+    expect(instructionsFor("wechat")).toHaveLength(4);
+    expect(instructionsFor("wechat")[0]).toContain("模拟发布");
+  });
+
+  it("未知平台返回默认指引", () => {
+    const result = instructionsFor("unknown-platform");
+    expect(result).toHaveLength(1);
+    expect(result[0]).toContain("默认走模拟发布");
   });
 });

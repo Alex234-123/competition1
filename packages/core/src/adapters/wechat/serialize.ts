@@ -12,16 +12,15 @@ const WECHAT = "wechat";
 /**
  * @param doc 已 preprocess 的文档
  * @param override 平台覆盖层(标题/标签等)
- * @param config 运行时配置(themeId 选择主题,缺省为 minimal)
+ * @param _config 运行时配置(预留,当前仅 minimal 主题)
  */
 export function serializeWechat(
   doc: Document,
   override?: PlatformOverride,
-  config?: ResolvedPlatformConfig,
+  _config?: ResolvedPlatformConfig,
 ): SerializedPayload {
-  // 从运行时配置读取主题,缺省回退为 minimal(绿色 #07C160)。
-  const themeId = config?.themeId ?? "minimal";
-  const theme = themeId === "minimal" ? createMinimalTheme() : createMinimalTheme();
+  // 创建主题;当前仅 minimal,后续可从 config?.themeId 扩展("soft"/"bold")。
+  const theme = createMinimalTheme();
   const assetMap = buildAssetMap(doc);
 
   const strategy: HtmlStyleStrategy = {

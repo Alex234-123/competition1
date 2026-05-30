@@ -114,6 +114,28 @@ describe("flattenToPlaintext", () => {
   });
 });
 
+describe("runPipeline 边界", () => {
+  it("applicable 返回 false 时跳过变换", () => {
+    const { document } = markdownToIR("普通文本。");
+    const called: string[] = [];
+    const transforms = [
+      {
+        name: "always-skip",
+        applicable: () => false,
+        run: (doc: typeof document) => { called.push("run"); return doc; },
+      },
+      {
+        name: "always-apply",
+        applicable: () => true,
+        run: (doc: typeof document) => { called.push("run2"); return doc; },
+      },
+    ];
+    const out = runPipeline(transforms, document, ctxFor(wechatCapabilities, "wechat"));
+    expect(called).toEqual(["run2"]);
+    expect(out).toBeDefined();
+  });
+});
+
 describe("buildPipeline", () => {
   it("公众号管线含 link-to-footnote,不含 flatten", () => {
     const names = buildPipeline(wechatCapabilities).map((t) => t.name);
