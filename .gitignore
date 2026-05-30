@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+dist-ext/
+dist-types/
+*.tsbuildinfo
+packages/*/dist/
+packages/*/dist-types/
+
+# Runtime data (local image host uploads)
+packages/server/data/
+
+# Test / coverage
+coverage/
+.vitest/
+
+# Secrets — NEVER commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local agent/editor config (may contain tokens — never commit)
+.claude/
+
+# Logs
+*.log
+npm-debug.log*

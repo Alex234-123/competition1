@@ -1,0 +1,25 @@
+{
+  "name": "@mpp/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "多平台内容发布工具核心:IR、解析、降级变换、适配器、校验、发布器(纯 TS,零 DOM)",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "markdown-it": "^14.1.0"
+  },
+  "devDependencies": {
+    "@types/markdown-it": "^14.1.2"
+  }
+}
