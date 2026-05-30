@@ -11,20 +11,22 @@
 ```bash
 npm install
 
-# M1 零密钥闭环演示:样例 MD → 四平台产物落盘 dist/demo/
+# 零密钥闭环演示:样例 MD → 四平台产物落盘 dist/demo/(含本地图上传图床演示)
 npm run demo
 
-# M2 交互式 Web 工具(主演示路径,无需扩展/密钥)
+# 交互式 Web 工具(主演示路径,无需扩展/密钥)
 npm run dev          # 打开 http://localhost:5176
 
-# 全量单测 + 类型检查
+# 全量单测(120) + 类型检查 + 代码风格
 npm test
 npm run typecheck
+npm run lint
+npm run test:coverage   # core 覆盖率门槛 ≥80%
 
-# M3 打包 MV3 浏览器扩展 → dist-ext/(Chrome 加载已解压扩展)
+# 打包 MV3 浏览器扩展 → dist-ext/(Chrome 加载已解压扩展)
 npm run build:ext
 
-# M4 可选服务端(仅公众号真实发布时需要,默认不启)
+# 可选服务端(图片图床 / 公众号真实发布时需要,默认不启)
 npm run server       # 需先在 packages/server 配置 .env
 ```
 
@@ -38,9 +40,9 @@ monorepo（npm workspaces），三包 + 演示脚本：
 
 | 包 | 职责 | 依赖环境 |
 |---|---|---|
-| **packages/core** | 纯 TS、零 DOM。IR 类型、MD→IR 解析、能力驱动变换库、适配器注册表+四平台适配器、校验器、两阶段 Publisher、同步引擎、LLM 接口 | 无（可被 app/server 共用） |
-| **packages/app** | 一套 React UI **双构建**：`dev` 即完整 Web 工具，`build:ext` 即 MV3 扩展。通过 `PlatformBridge` 隔离 `chrome.*` | 浏览器 |
-| **packages/server** | 可选 Fastify 服务端，默认不启。持公众号密钥、跑 token 缓存、图片重托管、草稿 API | Node 20+ |
+| **packages/core** | 纯 TS、零 DOM。IR 类型、MD→IR 解析、能力驱动变换库、适配器注册表+四平台适配器、HTML 净化、配置外置、图片重托管、校验器、两阶段 Publisher、同步引擎、OpenAI 兼容 LLM | 无（可被 app/server 共用） |
+| **packages/app** | 一套 React UI **双构建**：`dev` 即完整 Web 工具，`build:ext` 即 MV3 扩展。通过 `PlatformBridge` 隔离 `chrome.*`，含草稿持久化 / 图片上传 / AI 增强面板 | 浏览器 |
+| **packages/server** | 可选 Fastify 服务端，默认不启。持公众号密钥、跑 token 缓存、图片图床（local/s3/wechat）、限流 + 结构化日志 | Node 20+ |
 
 ### 核心数据流
 
@@ -117,10 +119,28 @@ registerAdapter(new MyPlatformAdapter());
 
 ---
 
-## 智能改写：规则式为主，预留 LLM 接口
+## 智能改写：规则式为主，LLM 增强可选（OpenAI 兼容）
 
 - **规则式（默认，零密钥即可全功能）**：能力驱动的纯函数变换库完成所有格式/风格适配。
-- **LLM 接口（可选增强）**：`packages/core/src/llm/` 定义 `LlmAdapter`（标题优化/摘要/口语化），默认 `NoopLlm` 透传。配置 key 后可接入真实模型，无 key 不影响任何功能。
+- **LLM 增强（可选）**：`OpenAiCompatLlm` 实现 `LlmAdapter`，走标准 `/v1/chat/completions` 协议，**一份实现通吃** OpenAI / DeepSeek / Kimi / Qwen / Ollama / vLLM。在 Web 设置面板填 `baseUrl + apiKey + model` 即启用「优化标题 / 生成摘要 / 口语化（小红书）」；每步失败自动回退原值，**无 key 时退化为 NoopLlm，任何功能不受影响**。
+- **安全**：`apiKey` 仅存浏览器本地（localStorage / chrome.storage），**绝不写入任何提交文件**。
+
+## 图片资产全链路（本地图 → 真实图床）
+
+正文里的本地图 / 外链图在发布时自动**重托管**到图床，产物 `<img>` 指向图床 URL，杜绝防盗链失效：
+
+- Web 端「+ 插入本地图片」选图 → 以 dataURL 进正文 → 发布时经 `bridge.uploadAsset` 转发 server `/upload`。
+- server 图床**可插拔三实现**（按 `.env` 的 `IMAGE_HOST` 选择）：
+  - `local` — 落盘 + `@fastify/static` 暴露 `/uploads/*`（零配置兜底，部署公网即真图床）。
+  - `s3` — `@aws-sdk/client-s3`，接 Cloudflare R2 / 阿里云 OSS / MinIO，填 endpoint/bucket/key 即用。
+  - `wechat` — 微信 `media/uploadimg`（正文图返 CDN URL）+ `add_material`（封面返 mediaId）。
+- 变换生成的占位图（表格图 / 公式图）标记为 `generated`，**不会被误上传**。
+
+## 草稿与发布历史持久化
+
+- 编辑内容**自动存草稿**（防抖），刷新页面不丢失；可多草稿切换 / 删除。
+- 每次发布追加**历史记录**（时间 + 各平台成败 + 回执）。
+- 存储按环境选实现：**Web = IndexedDB**（草稿含图片 dataURL，超 localStorage 5MB 上限）、**扩展 = chrome.storage.local**。UI 只依赖统一 `DraftStore` 接口。
 
 ---
 
@@ -156,13 +176,22 @@ curl http://127.0.0.1:8787/health   # 查看出口 IP 与配置状态
 
 | 验证 | 命令 | 覆盖 |
 |---|---|---|
-| 单测（65 个） | `npm test` | MD→IR 解析、各变换纯函数、字素簇计数、校验规则、四适配器序列化、公众号 API 请求构造（注入 mock fetch） |
+| 单测（120 个） | `npm test` | MD→IR 解析、各变换纯函数、字素簇计数、校验规则、四适配器序列化、HTML 净化、配置覆盖、图片重托管、图床辅助函数、LLM 增强（注入 mock fetch）、公众号 API 构造、TokenCache 并发锁、选择器覆盖、上传路由 |
+| 覆盖率门槛 | `npm run test:coverage` | core 行/分支/函数/语句 ≥80%（CI 强制） |
 | 类型检查 | `npm run typecheck` | core/app/server 三包 strict |
-| M1 闭环 | `npm run demo` | 四平台产物落盘 + 校验 + 回执 |
-| M2 交互 | `npm run dev` | 浏览器实时预览/校验/模拟发布/Canvas 封面 |
-| M3 扩展 | `npm run build:ext` | MV3 产物 dist-ext，Chrome 加载已解压扩展 |
+| 代码风格 | `npm run lint` | ESLint flat config + typescript-eslint + react-hooks |
+| 零密钥闭环 | `npm run demo` | 四平台产物落盘 + 本地图上传图床 + 校验 + 回执 |
+| 交互工具 | `npm run dev` | 浏览器实时预览/校验/模拟发布/Canvas 封面/草稿持久化/AI 增强 |
+| MV3 扩展 | `npm run build:ext` | MV3 产物 dist-ext，Chrome 加载已解压扩展 |
 
-> UI/扩展为前端，类型检查与单测保证**代码正确性**；**功能正确性**（编辑器注入、真实发布）需在浏览器实际操作验证，依赖真实平台登录态的部分无法自动化。
+> UI/扩展为前端，类型检查与单测保证**代码正确性**；**功能正确性**（编辑器注入、真实发布、真实对象存储联调）需在浏览器实际操作或配置外部凭据验证，依赖真实平台登录态的部分无法自动化。草稿持久化、发布历史已用 Playwright 跨刷新验证。
+
+## 工程化
+
+- **CI**：`.github/workflows/ci.yml`，Node 20/24 矩阵跑 `npm ci → typecheck → lint → test:coverage`。
+- **pre-commit**：`simple-git-hooks` + `lint-staged`，提交前对暂存区 `.ts/.tsx` 跑 `eslint --fix`。
+- **覆盖率门槛**：`vitest.config.ts` 设 core ≥80%（含分支），低于门槛 CI 失败。
+- **行尾统一**：`.gitattributes` 强制 LF，避免跨平台抖动。
 
 ---
 
@@ -173,21 +202,26 @@ packages/core/src/
 ├── ir/          # IR 契约:Document/Block/Inline/Asset/Capabilities
 ├── parse/       # markdown-it → IR
 ├── transforms/  # 能力驱动降级变换库(纯函数 IR→IR)+ 管线 + 注册表
-├── adapters/    # 适配器注册表 + 四平台(capabilities + serialize)
-├── validate/    # 按 capabilities 校验
+├── adapters/    # 适配器注册表 + 四平台 + shared/sanitize-html(净化护栏)
+├── config/      # 平台配置外置(违禁词/limits/主题 可覆盖)
+├── assets/      # 资产表 + ImageHost 契约 + 重托管引擎
+├── validate/    # 按 capabilities + 注入配置校验
 ├── publish/     # 两阶段 Publisher(Mock + 公众号官方 API 构造)
-├── llm/         # LlmAdapter 接口(默认 noop)
-└── sync/        # 有界并发同步引擎,各平台独立成败上报
+├── llm/         # LlmAdapter 接口 + OpenAiCompatLlm + 字段级 enhance
+└── sync/        # 有界并发同步引擎(接 rehost / LLM 异步阶段,均可选退化)
 
 packages/app/src/
-├── bridge/      # PlatformBridge 抽象(mock-bridge / chrome-bridge)
-├── components/  # 输入 + 四平台预览 + 校验提示 + 回执
+├── bridge/      # PlatformBridge 抽象(mock/chrome)+ uploadAsset 图片转发
+├── components/  # 输入 + 四平台预览(DOMPurify 加固)+ 校验提示 + 回执
 ├── render/      # Canvas 封面渲染
-├── content/     # content script:辅助发布(复制粘贴 + best-effort 注入)
+├── storage/     # DraftStore:草稿/历史持久化(IndexedDB / chrome.storage)
+├── state/       # zustand store(草稿/历史/LLM/图床接线)
+├── content/     # content script:辅助发布 + 选择器外置(selectors.ts,可远程覆盖)
 └── background/  # MV3 service worker
 
 packages/server/src/
-├── routes/      # /health(出口IP) /wechat/publish
-├── wechat/      # token 缓存 / 原生 fetch / 图片重托管 + 草稿
-└── config.ts    # 读 env、校验凭据
+├── routes/      # /health(出口IP) /wechat/publish /upload(图片图床)
+├── imagehost/   # 图床三实现(local / s3 / wechat)+ 工厂
+├── wechat/      # token 缓存(并发刷新锁)/ 原生 fetch / 图片重托管 + 草稿
+└── config.ts    # 读 env、校验凭据、图床配置
 ```
