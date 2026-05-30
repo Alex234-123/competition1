@@ -5,7 +5,16 @@ import { MockBridge } from "./bridge/mock-bridge.js";
 import { ChromeBridge } from "./bridge/chrome-bridge.js";
 import type { PlatformBridge } from "./bridge/types.js";
 import { useStore } from "./state/store.js";
-import "./styles.css";
+import { applyTheme } from "./styles/use-theme.js";
+import "./styles/index.css";
+
+// 首屏前应用持久化主题(避免亮暗闪烁)。system 模式由 CSS 媒体查询兜底。
+try {
+  const saved = localStorage.getItem("mpp.theme");
+  if (saved === "light" || saved === "dark") applyTheme(saved);
+} catch {
+  /* localStorage 不可用时走 system 默认 */
+}
 
 // 运行时检测环境,选择 bridge:扩展环境(chrome.runtime.id 存在)用 ChromeBridge,否则 MockBridge。
 function detectBridge(): PlatformBridge {
