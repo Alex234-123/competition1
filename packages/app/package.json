@@ -1,0 +1,30 @@
+{
+  "name": "@mpp/app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "多平台内容发布工具 UI —— 一套 React 界面双构建:web 工具 + MV3 扩展",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:ext": "vite build --config vite.config.ext.ts",
+    "preview": "vite preview",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@mpp/core": "*",
+    "dompurify": "^3.4.7",
+    "idb": "^8.0.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.4.0",
+    "@types/chrome": "^0.0.287",
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.2",
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.0.3"
+  }
+}
