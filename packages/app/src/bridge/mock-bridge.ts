@@ -7,6 +7,8 @@
 import type {
   AssistedHandoffRequest,
   AssistedHandoffResult,
+  AutomationPublishRequest,
+  AutomationPublishResult,
   ClipboardPayload,
   PlatformBridge,
   UploadAssetRequest,
@@ -61,6 +63,27 @@ export class MockBridge implements PlatformBridge {
       return {
         ok: false,
         message: `无法连接本地 server(${req.serverUrl}):${err instanceof Error ? err.message : String(err)}。请先启动 server 包。`,
+      };
+    }
+  }
+
+  async publishAutomation(req: AutomationPublishRequest): Promise<AutomationPublishResult> {
+    try {
+      const res = await fetch(`${req.runnerUrl}/automation/publish`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          platformId: req.platformId,
+          mode: req.mode,
+          payload: req.payload,
+        }),
+      });
+      return (await res.json()) as AutomationPublishResult;
+    } catch (err) {
+      return {
+        ok: false,
+        status: "failed",
+        message: `无法连接本地 Playwright runner(${req.runnerUrl}):${err instanceof Error ? err.message : String(err)}`,
       };
     }
   }

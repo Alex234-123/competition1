@@ -11,6 +11,7 @@ import { buildReport, type ValidationReport } from "./types.js";
 import {
   checkBannedWords,
   checkBody,
+  checkImageRehost,
   checkMedia,
   checkSummary,
   checkTags,
@@ -35,6 +36,7 @@ export function validate(
     ...checkMedia(payload, cap),
     ...checkTags(payload, resolved.limits),
     ...checkBannedWords(rawDoc ?? doc, cap, resolved.bannedWords),
+    ...checkImageRehost(doc, platformId, cap),
   ];
   return buildReport(platformId, issues);
 }

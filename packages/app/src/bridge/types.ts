@@ -37,6 +37,25 @@ export interface WechatPublishResult {
   readonly remoteId?: string;
 }
 
+export type AutomationPublishMode = "mock" | "assist" | "draft" | "full-auto";
+
+export interface AutomationPublishRequest {
+  readonly runnerUrl: string;
+  readonly platformId: string;
+  readonly mode: Exclude<AutomationPublishMode, "mock" | "assist">;
+  readonly payload: unknown;
+}
+
+export interface AutomationPublishResult {
+  readonly ok: boolean;
+  readonly status: "drafted" | "published" | "needs-user-action" | "failed";
+  readonly message: string;
+  readonly remoteUrl?: string;
+  readonly screenshotPath?: string;
+  readonly tracePath?: string;
+  readonly diagnosticsPath?: string;
+}
+
 /** 图片上传请求(转发到 server /upload)。 */
 export interface UploadAssetRequest {
   readonly serverUrl: string;
@@ -63,6 +82,9 @@ export interface PlatformBridge {
 
   /** 公众号真实发布(转发到本地 server)。 */
   publishWechat(req: WechatPublishRequest): Promise<WechatPublishResult>;
+
+  /** Playwright runner real web publishing. */
+  publishAutomation(req: AutomationPublishRequest): Promise<AutomationPublishResult>;
 
   /** 图片上传到图床(转发到本地 server /upload)。 */
   uploadAsset(req: UploadAssetRequest): Promise<UploadAssetResult>;

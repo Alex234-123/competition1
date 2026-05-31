@@ -1,0 +1,239 @@
+/**
+ * 设计 token + 亮暗双主题。
+ *
+ * 主题策略:默认跟随系统(prefers-color-scheme),手动切换时在 <html> 上写 data-theme="light|dark" 覆盖。
+ * 三层 token:primitive(原色) → semantic(语义) → component(间距/圆角/阴影/字阶)。
+ */
+
+/* ===== Primitive 原色 ===== */
+:root {
+  --indigo-400: #8d8df3;
+  --indigo-500: #5b5bd6;
+  --indigo-600: #4f4fc7;
+  --indigo-700: #4343b0;
+
+  /* 平台品牌色(亮暗通用,卡片内按需取 soft 背景) */
+  --brand-wechat: #07c160;
+  --brand-zhihu: #0084ff;
+  --brand-bilibili: #fb7299;
+  --brand-xiaohongshu: #ff2442;
+
+  /* ===== 字体栈(系统字体,零网络依赖,中文友好) ===== */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", "Hiragino Sans GB", sans-serif;
+  --font-mono: "SF Mono", "JetBrains Mono", "Fira Code", Consolas,
+    "Liberation Mono", Menlo, monospace;
+
+  /* ===== 字阶 ===== */
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-base: 14px;
+  --fs-md: 15px;
+  --fs-lg: 18px;
+  --fs-xl: 22px;
+  --fs-2xl: 28px;
+
+  /* ===== 间距(4pt 节奏) ===== */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-8: 48px;
+
+  /* ===== 圆角 ===== */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 18px;
+  --r-full: 999px;
+
+  /* ===== 动效 ===== */
+  --dur-fast: 120ms;
+  --dur: 180ms;
+  --dur-slow: 260ms;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ===== z 层级 ===== */
+  --z-sticky: 20;
+  --z-overlay: 100;
+  --z-modal: 110;
+  --z-toast: 200;
+}
+
+/* ===== 亮色语义(默认) ===== */
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --bg: #f6f7f9;
+  --bg-grad: radial-gradient(1200px 600px at 80% -10%, #eef0fb 0%, transparent 60%);
+  --surface: #ffffff;
+  --surface-2: #f1f3f5;
+  --surface-hover: #f5f6f8;
+  --border: #e4e7eb;
+  --border-strong: #d3d8de;
+
+  --text: #1a1d21;
+  --text-2: #5b6470;
+  /* WCAG AA:#646b76 在 #fff/#f6f7f9/#f1f3f5 上均 ≥4.8:1(次要小字达标)。 */
+  --text-3: #646b76;
+
+  --accent: var(--indigo-500);
+  --accent-hover: var(--indigo-600);
+  --accent-text: #ffffff;
+  --accent-soft: #eeeefb;
+  --accent-ring: rgba(91, 91, 214, 0.4);
+
+  /* 状态文字色加深以满足 soft 背景上 ≥4.5:1(原 green-600/red-500 仅 3.4–4.0)。 */
+  --ok: #0a6e3a;
+  --ok-soft: #e7f7ee;
+  --warn: #a05a00;
+  --warn-soft: #fef4e3;
+  --err: #c2363b;
+  --err-soft: #fdecec;
+
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.04);
+  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08), 0 2px 4px rgba(16, 24, 40, 0.04);
+  --shadow-lg: 0 16px 40px rgba(16, 24, 40, 0.14), 0 4px 12px rgba(16, 24, 40, 0.08);
+  --scrollbar: #cdd2d9;
+}
+
+/* ===== 暗色语义(手动) ===== */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #0d0e12;
+  --bg-grad: radial-gradient(1200px 600px at 80% -10%, rgba(91, 91, 214, 0.12) 0%, transparent 55%);
+  --surface: #16181d;
+  --surface-2: #1d2027;
+  --surface-hover: #21242c;
+  --border: #282c34;
+  --border-strong: #383d47;
+
+  --text: #e7e9ec;
+  --text-2: #9aa1ac;
+  /* WCAG AA:#888f9a 在 surface/surface-2 上均 ≥5:1。 */
+  --text-3: #888f9a;
+
+  --accent: var(--indigo-400);
+  --accent-hover: #a0a0f6;
+  --accent-text: #0d0e12;
+  --accent-soft: rgba(124, 124, 240, 0.14);
+  --accent-ring: rgba(141, 141, 243, 0.5);
+
+  --ok: #3fb950;
+  --ok-soft: rgba(63, 185, 80, 0.14);
+  --warn: #f0b429;
+  --warn-soft: rgba(240, 180, 41, 0.14);
+  --err: #ff6b6b;
+  --err-soft: rgba(255, 107, 107, 0.14);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.6);
+  --scrollbar: #383d47;
+}
+
+/* ===== 系统暗色兜底(未手动设 data-theme 时) ===== */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+
+    --bg: #0d0e12;
+    --bg-grad: radial-gradient(1200px 600px at 80% -10%, rgba(91, 91, 214, 0.12) 0%, transparent 55%);
+    --surface: #16181d;
+    --surface-2: #1d2027;
+    --surface-hover: #21242c;
+    --border: #282c34;
+    --border-strong: #383d47;
+
+    --text: #e7e9ec;
+    --text-2: #9aa1ac;
+    --text-3: #888f9a;
+
+    --accent: var(--indigo-400);
+    --accent-hover: #a0a0f6;
+    --accent-text: #0d0e12;
+    --accent-soft: rgba(124, 124, 240, 0.14);
+    --accent-ring: rgba(141, 141, 243, 0.5);
+
+    --ok: #3fb950;
+    --ok-soft: rgba(63, 185, 80, 0.14);
+    --warn: #f0b429;
+    --warn-soft: rgba(240, 180, 41, 0.14);
+    --err: #ff6b6b;
+    --err-soft: rgba(255, 107, 107, 0.14);
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 18px 44px rgba(0, 0, 0, 0.6);
+    --scrollbar: #383d47;
+  }
+}
+
+/* ===== reset + 全局基础 ===== */
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  background-image: var(--bg-grad);
+  background-attachment: fixed;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* 键盘可见焦点环(鼠标点击不显示) */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* 滚动条 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar);
+  border-radius: var(--r-full);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--text-3);
+  background-clip: padding-box;
+}
+
+/* 尊重减少动效偏好 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

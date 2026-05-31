@@ -1,0 +1,4 @@
+/* 样式入口:按 token → 骨架 → 组件 顺序加载。 */
+@import "./tokens.css";
+@import "./app.css";
+@import "./ui.css";

@@ -21,7 +21,7 @@ async function main() {
   await mkdir(OUT, { recursive: true });
 
   const md = await readFile(join(__dirname, "sample", "article.md"), "utf8");
-  const { document } = markdownToIR(md, {
+  const { document, assetTable } = markdownToIR(md, {
     meta: { authorName: "效率君", tags: ["效率", "时间管理", "科技"], canonicalUrl: "https://example.com/post/1" },
   });
 
@@ -45,7 +45,7 @@ async function main() {
   });
   const rehost = Object.fromEntries(platforms.map((id) => [id, makeRehostCtx(id)]));
 
-  const results = await syncToPlatforms(document, platforms, { now, rehost });
+  const results = await syncToPlatforms(document, platforms, { now, rehost, assetTable });
 
   const report = { title: document.meta.title, generatedAt: now(), platforms: [] };
 

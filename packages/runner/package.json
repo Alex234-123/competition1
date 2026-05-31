@@ -1,0 +1,30 @@
+{
+  "name": "@mpp/runner",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "本机 Playwright 自动化发布 runner",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json && node dist/cli.js",
+    "start": "node dist/cli.js",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.1",
+    "@mpp/core": "*",
+    "fastify": "^5.2.0",
+    "playwright": "^1.57.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.12.4"
+  }
+}

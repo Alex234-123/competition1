@@ -4,7 +4,7 @@
 import type { Asset, Capabilities, Document, PlatformOverride } from "../ir/types.js";
 import { buildPipeline } from "../transforms/registry.js";
 import { runPipeline, type TransformContext } from "../transforms/pipeline.js";
-import type { PlatformConfig } from "../config/platform-config.js";
+import type { PlatformConfig, ResolvedPlatformConfig } from "../config/platform-config.js";
 import { sanitizeHtml, shouldSanitize } from "./shared/sanitize-html.js";
 import type { PlatformAdapter, RehostContext, RehostResult, SerializedPayload } from "./types.js";
 
@@ -28,16 +28,20 @@ export abstract class BaseAdapter implements PlatformAdapter {
    * 序列化为平台产物,并对 HTML 产物统一净化(allowlist)。
    * 子类实现 serializeRaw;本方法是所有产物的统一出口,确保 HTML 经过净化护栏。
    */
-  serialize(doc: Document, override?: PlatformOverride): SerializedPayload {
-    const payload = this.serializeRaw(doc, override);
+  serialize(doc: Document, override?: PlatformOverride, config?: ResolvedPlatformConfig): SerializedPayload {
+    const payload = this.serializeRaw(doc, override, config);
     if (shouldSanitize(payload.mime)) {
       return { ...payload, content: sanitizeHtml(payload.content) };
     }
     return payload;
   }
 
-  /** 子类实现:IR → 平台原生序列化产物(净化前)。 */
-  protected abstract serializeRaw(doc: Document, override?: PlatformOverride): SerializedPayload;
+  /** 子类实现:IR → 平台原生序列化产物(净化前)。config 为主题/排版等运行时配置(可选)。 */
+  protected abstract serializeRaw(
+    doc: Document,
+    override?: PlatformOverride,
+    config?: ResolvedPlatformConfig,
+  ): SerializedPayload;
 
   /** 默认重托管:调用注入的 upload,记录返回的 url/mediaId。 */
   async rehostAsset(asset: Asset, ctx: RehostContext): Promise<RehostResult> {

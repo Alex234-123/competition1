@@ -5,7 +5,7 @@
  * 新平台 = 实现一个 adapter + 注册一次。
  */
 import type { Asset, Capabilities, Document, PlatformOverride } from "../ir/types.js";
-import type { PlatformConfig } from "../config/platform-config.js";
+import type { PlatformConfig, ResolvedPlatformConfig } from "../config/platform-config.js";
 
 /** 序列化产物:各平台原生表示 + 元信息。 */
 export interface SerializedPayload {
@@ -48,8 +48,8 @@ export interface PlatformAdapter {
   /** IR → IR:应用该平台的降级变换管线。可注入配置(违禁词表)。 */
   preprocess(doc: Document, override?: PlatformOverride, config?: PlatformConfig): Document;
 
-  /** IR → 平台原生序列化产物。 */
-  serialize(doc: Document, override?: PlatformOverride): SerializedPayload;
+  /** IR → 平台原生序列化产物。config 为主题/排版等运行时配置(可选)。 */
+  serialize(doc: Document, override?: PlatformOverride, config?: ResolvedPlatformConfig): SerializedPayload;
 
   /** 重托管单个资产到该平台图床(网络注入)。 */
   rehostAsset(asset: Asset, ctx: RehostContext): Promise<RehostResult>;

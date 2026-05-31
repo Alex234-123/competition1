@@ -8,6 +8,8 @@
 import type {
   AssistedHandoffRequest,
   AssistedHandoffResult,
+  AutomationPublishRequest,
+  AutomationPublishResult,
   ClipboardPayload,
   PlatformBridge,
   UploadAssetRequest,
@@ -80,6 +82,27 @@ export class ChromeBridge implements PlatformBridge {
       return (await res.json()) as WechatPublishResult;
     } catch (err) {
       return { ok: false, message: `无法连接 server:${err instanceof Error ? err.message : String(err)}` };
+    }
+  }
+
+  async publishAutomation(req: AutomationPublishRequest): Promise<AutomationPublishResult> {
+    try {
+      const res = await fetch(`${req.runnerUrl}/automation/publish`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          platformId: req.platformId,
+          mode: req.mode,
+          payload: req.payload,
+        }),
+      });
+      return (await res.json()) as AutomationPublishResult;
+    } catch (err) {
+      return {
+        ok: false,
+        status: "failed",
+        message: `无法连接 runner:${err instanceof Error ? err.message : String(err)}`,
+      };
     }
   }
 

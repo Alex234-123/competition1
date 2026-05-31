@@ -119,6 +119,26 @@ export function checkBannedWords(
   }));
 }
 
+/** 图片重托管规则:对声明 requiresImageRehost 的平台,检测是否仍有未重托管的图片。 */
+export function checkImageRehost(doc: Document, platformId: string, cap: Capabilities): ValidationIssue[] {
+  if (!cap.requiresImageRehost) return [];
+  const unrehosted = doc.assets.filter((a) => {
+    if (a.kind !== "image") return false;
+    if (a.source.generated) return false;
+    const rehost = a.rehosted[platformId];
+    return !rehost?.url && !rehost?.mediaId;
+  });
+  if (unrehosted.length === 0) return [];
+  return [
+    {
+      severity: "warning",
+      code: "image-not-rehosted",
+      message: `${unrehosted.length} 张图片未重托管,可能因防盗链无法显示。请配置图床服务(http://127.0.0.1:8787)后重试`,
+      field: "images",
+    },
+  ];
+}
+
 function stripTags(html: string): string {
   return html.replace(/<[^>]+>/g, "");
 }

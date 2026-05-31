@@ -54,3 +54,38 @@ describe("校验器", () => {
     expect(report.issues.some((i) => i.code === "title-empty")).toBe(true);
   });
 });
+
+describe("checkImageRehost", () => {
+  it("B站:未重托管图片产 warning", () => {
+    const a = getAdapter("bilibili")!;
+    const raw = markdownToIR("# 标题\n\n正文\n\n![图](https://e.com/i.png)").document;
+    const doc = a.preprocess(raw);
+    const payload = a.serialize(doc);
+    // B站 requiresImageRehost=true,图片未重托管应产 warning。
+    const report = validate("bilibili", doc, payload, a.capabilities, raw);
+    expect(report.issues.some((i) => i.code === "image-not-rehosted" && i.severity === "warning")).toBe(true);
+  });
+
+  it("B站:已重托管图片不产 warning", () => {
+    const a = getAdapter("bilibili")!;
+    const raw = markdownToIR("# 标题\n\n![图](https://e.com/i.png)").document;
+    const doc = a.preprocess(raw);
+    // 手动标记图片已重托管(模拟 rehost 步骤完成)。
+    const imgAsset = doc.assets.find((a) => a.kind === "image");
+    if (imgAsset) {
+      imgAsset.rehosted["bilibili"] = { url: "https://i0.hdslb.com/bfs/xxx.jpg" };
+    }
+    const payload = a.serialize(doc);
+    const report = validate("bilibili", doc, payload, a.capabilities, raw);
+    expect(report.issues.some((i) => i.code === "image-not-rehosted")).toBe(false);
+  });
+
+  it("知乎:无需重托管(requiresImageRehost=false),不产 warning", () => {
+    const a = getAdapter("zhihu")!;
+    const raw = markdownToIR("# 标题\n\n![图](https://e.com/i.png)").document;
+    const doc = a.preprocess(raw);
+    const payload = a.serialize(doc);
+    const report = validate("zhihu", doc, payload, a.capabilities, raw);
+    expect(report.issues.some((i) => i.code === "image-not-rehosted")).toBe(false);
+  });
+});

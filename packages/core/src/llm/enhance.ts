@@ -19,6 +19,8 @@ export interface EnhanceOptions {
   readonly summary?: boolean;
   /** 是否口语化正文(仅对 plaintext 平台生效)。 */
   readonly colloquialize?: boolean;
+  /** 是否全文润色(仅对 HTML 平台生效,保持结构只改表达)。 */
+  readonly rewrite?: boolean;
 }
 
 /**
@@ -76,6 +78,18 @@ export async function enhancePayload(
   if (opts.colloquialize && cap.contentModel === "plaintext") {
     try {
       const out = await llm.run({ task: "colloquialize", platformId, input: payload.content });
+      const cleaned = out.trim();
+      if (cleaned) content = cap.limits.bodyMax ? graphemeTruncate(cleaned, cap.limits.bodyMax) : cleaned;
+    } catch {
+      /* 回退原正文 */
+    }
+  }
+
+  // rewrite:仅对 HTML 平台做全文润色(保持标签结构,优化文字表达)。
+  // 与 colloquialize 互斥:plaintext 平台走口语化,HTML 平台走 rewrite。
+  if (opts.rewrite && cap.contentModel !== "plaintext") {
+    try {
+      const out = await llm.run({ task: "rewrite", platformId, input: payload.content });
       const cleaned = out.trim();
       if (cleaned) content = cap.limits.bodyMax ? graphemeTruncate(cleaned, cap.limits.bodyMax) : cleaned;
     } catch {

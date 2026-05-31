@@ -1,7 +1,10 @@
 /** server 配置 —— 从环境变量读取公众号凭据 + 图床配置,校验存在性。 */
 import { config as loadEnv } from "dotenv";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-loadEnv();
+const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+loadEnv({ path: resolve(packageRoot, ".env") });
 
 /** 图床后端类型:local=落盘静态服务,s3=对象存储,wechat=微信永久素材。 */
 export type ImageHostKind = "local" | "s3" | "wechat";
