@@ -96,6 +96,29 @@
   color: var(--accent);
 }
 
+.btn-handoff {
+  width: auto;
+  height: auto;
+  padding: 2px 6px;
+  font-size: var(--fs-xs);
+  gap: 3px;
+  color: var(--text-3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+}
+.btn-handoff:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.btn-handoff:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.btn-handoff .handoff-label {
+  white-space: nowrap;
+}
+
 /* ===== 表单字段 ===== */
 .field {
   display: flex;

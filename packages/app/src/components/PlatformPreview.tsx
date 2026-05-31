@@ -1,21 +1,55 @@
 import type { PlatformResult, ValidationIssue } from "@mpp/core";
-import { memo, useState } from "react";
+import { memo, useState, useCallback } from "react";
 import DOMPurify from "dompurify";
-import { XCircle, AlertTriangle, Info, CheckCircle2, ListChecks } from "lucide-react";
+import { XCircle, AlertTriangle, Info, CheckCircle2, ListChecks, Copy, Check, Loader2 } from "lucide-react";
 import { platformColor } from "./platform-meta.js";
+import type { PlatformBridge } from "../bridge/types.js";
 
 interface Props {
   result: PlatformResult;
+  bridge?: PlatformBridge | null;
 }
 
 type Tab = "preview" | "source" | "issues";
+type HandoffState = "idle" | "loading" | "ok" | "fail";
 
 // 单平台预览:渲染序列化产物 + 校验提示 + 发布指引。
 // memo:仅当该平台的 result 引用变化才重渲染(避免父级全量订阅导致四卡齐刷)。
-export const PlatformPreview = memo(function PlatformPreview({ result }: Props) {
+export const PlatformPreview = memo(function PlatformPreview({ result, bridge }: Props) {
   const [tab, setTab] = useState<Tab>("preview");
+  const [handoffState, setHandoffState] = useState<HandoffState>("idle");
+  const [handoffMsg, setHandoffMsg] = useState("");
   const payload = result.artifact?.payload;
   const color = platformColor(result.platformId);
+
+  // 辅助注入/复制:平台产物 → 剪贴板(best-effort 注入仅扩展环境可用)。
+  const handleHandoff = useCallback(async () => {
+    if (!payload || !bridge) return;
+    setHandoffState("loading");
+    try {
+      const res = await bridge.assistedHandoff({
+        platformId: result.platformId,
+        clipboard: {
+          html: payload.mime === "text/html" ? payload.content : undefined,
+          text: payload.content,
+        },
+        tryInject: true,
+      });
+      if (res.ok) {
+        setHandoffState("ok");
+        setHandoffMsg(res.method === "injected" ? "已注入编辑器" : "已复制到剪贴板");
+      } else {
+        setHandoffState("fail");
+        setHandoffMsg(res.message || "操作失败");
+      }
+    } catch (err) {
+      setHandoffState("fail");
+      setHandoffMsg(err instanceof Error ? err.message : "操作失败");
+    }
+    // 2.5s 后自动清除状态。
+    setTimeout(() => { setHandoffState("idle"); setHandoffMsg(""); }, 2500);
+  }, [payload, bridge, result.platformId]);
+
   if (!payload) {
     return (
       <div className="platform-preview" style={{ height: "auto" }}>
@@ -57,6 +91,29 @@ export const PlatformPreview = memo(function PlatformPreview({ result }: Props) 
           {result.platformName}
         </span>
         <span className="preview-meta">
+          {bridge && (
+            <button
+              type="button"
+              className="btn-icon btn-handoff"
+              disabled={handoffState === "loading"}
+              onClick={handleHandoff}
+              aria-label={`复制${result.platformName}内容到剪贴板`}
+              title={handoffMsg || `复制/注入到${result.platformName}编辑器`}
+            >
+              {handoffState === "loading" ? (
+                <Loader2 size={13} className="spinner" aria-hidden />
+              ) : handoffState === "ok" ? (
+                <Check size={13} aria-hidden />
+              ) : handoffState === "fail" ? (
+                <XCircle size={13} aria-hidden />
+              ) : (
+                <Copy size={13} aria-hidden />
+              )}
+              <span className="handoff-label">
+                {handoffState === "loading" ? "复制中..." : handoffState === "ok" ? "已复制" : handoffState === "fail" ? "失败" : "复制"}
+              </span>
+            </button>
+          )}
           {payload.mime === "text/html" ? "HTML" : "纯文本"} · {countChars(payload)} 字
           {errCount > 0 && (
             <span className="tag tag-err">

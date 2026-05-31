@@ -28,6 +28,7 @@ export function App() {
   const llm = useStore((s) => s.llm);
   const enhance = useStore((s) => s.enhance);
   const serverUrl = useStore((s) => s.serverUrl);
+  const bridge = useStore((s) => s.bridge);
   const env = useStore((s) => s.bridge?.env);
   // 行为(action)引用恒定,用 useShallow 一次性取出,不引入额外渲染。
   const actions = useStore(
@@ -185,7 +186,7 @@ export function App() {
               <div className="preview-grid">
                 {results.map((r) => (
                   <div key={r.platformId} className="preview-cell">
-                    <PlatformPreview result={r} />
+                    <PlatformPreview result={r} bridge={bridge} />
                     {receipts[r.platformId] && (
                       <div className="receipt">
                         <Check size={14} aria-hidden />
