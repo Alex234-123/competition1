@@ -6,6 +6,7 @@
  */
 import { create } from "zustand";
 import {
+  type AssetTable,
   markdownToIR,
   syncToPlatforms,
   listAdapters,
@@ -13,8 +14,9 @@ import {
   type PlatformResult,
   type RehostContext,
   type EnhanceOptions,
+  type SerializedPayload,
 } from "@mpp/core";
-import type { PlatformBridge } from "../bridge/types.js";
+import type { AutomationPublishMode, PlatformBridge } from "../bridge/types.js";
 import { createDraftStore, type Draft, type DraftStore, type HistoryEntry } from "../storage/draft-store.js";
 
 export interface LlmSettings {
@@ -22,6 +24,9 @@ export interface LlmSettings {
   apiKey: string;
   model: string;
 }
+
+export type WechatPublishMode = "mock" | "draft" | "publish";
+export type PlatformAutomationModes = Record<string, AutomationPublishMode>;
 
 export interface AppState {
   markdown: string;
@@ -34,12 +39,18 @@ export interface AppState {
   bridge: PlatformBridge | null;
   /** server 地址(图片上传/公众号发布用)。 */
   serverUrl: string;
+  /** Playwright runner 地址(真实网页端自动化发布用)。 */
+  runnerUrl: string;
   /** 上传图床后的 URL 映射:原始(dataURL/URL)→ 图床 URL。 */
   uploadedAssets: Record<string, string>;
   /** LLM 设置(apiKey 仅存本地)。 */
   llm: LlmSettings;
   /** 启用的 AI 增强项。 */
   enhance: EnhanceOptions;
+  /** 公众号发布模式:mock=模拟,draft=创建草稿,publish=提交发布。 */
+  wechatPublishMode: WechatPublishMode;
+  /** 每个平台的网页自动化发布模式。 */
+  automationModes: PlatformAutomationModes;
   /** 已保存草稿(按更新时间倒序)。 */
   drafts: Draft[];
   /** 当前编辑中的草稿 id(null = 尚未落库)。 */
@@ -52,8 +63,11 @@ export interface AppState {
   setAuthorName: (name: string) => void;
   setTags: (tags: string[]) => void;
   setServerUrl: (url: string) => void;
+  setRunnerUrl: (url: string) => void;
   setLlm: (patch: Partial<LlmSettings>) => void;
   setEnhance: (patch: Partial<EnhanceOptions>) => void;
+  setWechatPublishMode: (mode: WechatPublishMode) => void;
+  setAutomationMode: (platformId: string, mode: AutomationPublishMode) => void;
   togglePlatform: (id: string) => void;
   /** 插入一张本地图片(以 dataURL 形式追加到 markdown)。 */
   insertLocalImage: (dataUrl: string, alt: string) => void;
@@ -117,9 +131,12 @@ export const useStore = create<AppState>((set, get) => ({
   receipts: {},
   bridge: null,
   serverUrl: "http://127.0.0.1:8787",
+  runnerUrl: "http://127.0.0.1:8790",
   uploadedAssets: {},
   llm: { baseUrl: "https://api.deepseek.com/v1", apiKey: "", model: "deepseek-chat" },
   enhance: {},
+  wechatPublishMode: "mock",
+  automationModes: Object.fromEntries(ALL_PLATFORMS.map((id) => [id, "mock"])) as PlatformAutomationModes,
   drafts: [],
   currentDraftId: null,
   history: [],
@@ -141,6 +158,10 @@ export const useStore = create<AppState>((set, get) => ({
     set({ serverUrl: url });
     void get().bridge?.setSetting("mpp.serverUrl", url);
   },
+  setRunnerUrl: (url) => {
+    set({ runnerUrl: url });
+    void get().bridge?.setSetting("mpp.runnerUrl", url);
+  },
   setLlm: (patch) => {
     const llm = { ...get().llm, ...patch };
     set({ llm });
@@ -151,6 +172,15 @@ export const useStore = create<AppState>((set, get) => ({
     const merged = { ...get().enhance, ...patch };
     set({ enhance: merged });
     void get().bridge?.setSetting("mpp.enhance", JSON.stringify(merged));
+  },
+  setWechatPublishMode: (mode) => {
+    set({ wechatPublishMode: mode });
+    void get().bridge?.setSetting("mpp.wechatPublishMode", mode);
+  },
+  setAutomationMode: (platformId, mode) => {
+    const automationModes = { ...get().automationModes, [platformId]: mode };
+    set({ automationModes });
+    void get().bridge?.setSetting("mpp.automationModes", JSON.stringify(automationModes));
   },
   llmReady: () => {
     const { baseUrl, apiKey, model } = get().llm;
@@ -183,7 +213,17 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   publishAll: async () => {
-    const { markdown, authorName, tags, selectedPlatforms, bridge, serverUrl } = get();
+    const {
+      markdown,
+      authorName,
+      tags,
+      selectedPlatforms,
+      bridge,
+      serverUrl,
+      runnerUrl,
+      wechatPublishMode,
+      automationModes,
+    } = get();
     set({ publishing: true, receipts: {} });
     const { document, assetTable } = markdownToIR(markdown, {
       meta: { authorName, tags, canonicalUrl: "https://example.com/post" },
@@ -225,6 +265,60 @@ export const useStore = create<AppState>((set, get) => ({
       assetTable,
       ...buildLlmOptions(get()),
     });
+    if (bridge && wechatPublishMode !== "mock") {
+      const idx = results.findIndex((r) => r.platformId === "wechat");
+      const wechat = idx >= 0 ? results[idx] : undefined;
+      if (wechat?.artifact && !wechat.report?.hasError) {
+        const outcome = await bridge.publishWechat({
+          serverUrl,
+          payload: buildWechatPublishPayload(wechat.artifact.payload, assetTable, wechatPublishMode),
+        });
+        results[idx] = {
+          ...wechat,
+          ok: outcome.ok,
+          receipt: outcome.ok
+            ? {
+                platformId: "wechat",
+                status: wechatPublishMode === "publish" ? "submitted" : "staged",
+                message: outcome.message,
+                remoteId: outcome.remoteId,
+                at: new Date().toISOString(),
+              }
+            : undefined,
+          error: outcome.ok ? undefined : outcome.message,
+        };
+      }
+    }
+    if (bridge) {
+      await Promise.all(
+        results.map(async (result, idx) => {
+          const mode = automationModes[result.platformId] ?? "mock";
+          if (mode !== "draft" && mode !== "full-auto") return;
+          if (!result.artifact || result.report?.hasError) return;
+
+          const outcome = await bridge.publishAutomation({
+            runnerUrl,
+            platformId: result.platformId,
+            mode,
+            payload: result.artifact.payload,
+          });
+          results[idx] = {
+            ...result,
+            ok: outcome.ok,
+            receipt: outcome.ok
+              ? {
+                  platformId: result.platformId,
+                  status: outcome.status === "published" ? "submitted" : "staged",
+                  message: outcome.message,
+                  previewUrl: outcome.remoteUrl,
+                  at: new Date().toISOString(),
+                }
+              : undefined,
+            error: outcome.ok ? undefined : outcome.message,
+          };
+        }),
+      );
+    }
     const receipts: Record<string, string> = {};
     for (const r of results) {
       receipts[r.platformId] = r.receipt?.message ?? r.error ?? "未发布";
@@ -310,6 +404,43 @@ function buildLlmOptions(state: AppState): { llm?: OpenAiCompatLlm; enhance?: En
   return {
     llm: new OpenAiCompatLlm(state.llm),
     enhance: state.enhance,
+  };
+}
+
+function buildWechatPublishPayload(
+  payload: SerializedPayload,
+  assetTable: AssetTable,
+  mode: WechatPublishMode,
+): {
+  title: string;
+  content: string;
+  summary?: string;
+  author?: string;
+  contentSourceUrl?: string;
+  coverImageUrl?: string;
+  bodyImageUrls: readonly string[];
+  publish: boolean;
+} {
+  const bodyImageUrls = payload.imageAssetIds
+    .map((id) => assetTable.get(id))
+    .filter((asset): asset is NonNullable<typeof asset> => !!asset)
+    .map((asset) => asset.rehosted.wechat?.url ?? asset.source.url ?? asset.source.dataUrl)
+    .filter((url): url is string => !!url);
+  const cover = payload.coverAssetId ? assetTable.get(payload.coverAssetId) : undefined;
+  const fallbackCover = payload.imageAssetIds[0] ? assetTable.get(payload.imageAssetIds[0]) : undefined;
+  const coverAsset = cover ?? fallbackCover;
+
+  return {
+    title: payload.title,
+    content: payload.content,
+    summary: payload.summary,
+    author: typeof payload.extra?.author === "string" ? payload.extra.author : undefined,
+    contentSourceUrl:
+      typeof payload.extra?.contentSourceUrl === "string" ? payload.extra.contentSourceUrl : undefined,
+    coverImageUrl:
+      coverAsset?.rehosted.wechat?.url ?? coverAsset?.source.url ?? coverAsset?.source.dataUrl,
+    bodyImageUrls,
+    publish: mode === "publish",
   };
 }
 

@@ -40,6 +40,10 @@ void bridge.getSetting("mpp.serverUrl").then((raw) => {
   if (raw) useStore.setState({ serverUrl: raw });
 });
 
+void bridge.getSetting("mpp.runnerUrl").then((raw) => {
+  if (raw) useStore.setState({ runnerUrl: raw });
+});
+
 void bridge.getSetting("mpp.enhance").then((raw) => {
   if (!raw) return;
   try {
@@ -47,6 +51,27 @@ void bridge.getSetting("mpp.enhance").then((raw) => {
     useStore.setState((s) => ({ enhance: { ...s.enhance, ...saved } }));
   } catch {
     /* 忽略损坏的设置 */
+  }
+});
+
+void bridge.getSetting("mpp.wechatPublishMode").then((raw) => {
+  if (raw === "mock" || raw === "draft" || raw === "publish") {
+    useStore.setState({ wechatPublishMode: raw });
+  }
+});
+
+void bridge.getSetting("mpp.automationModes").then((raw) => {
+  if (!raw) return;
+  try {
+    const saved = JSON.parse(raw) as Record<string, unknown>;
+    const valid = Object.fromEntries(
+      Object.entries(saved).filter(
+        ([, value]) => value === "mock" || value === "assist" || value === "draft" || value === "full-auto",
+      ),
+    );
+    useStore.setState((s) => ({ automationModes: { ...s.automationModes, ...valid } }));
+  } catch {
+    /* 忽略损坏的自动化发布设置 */
   }
 });
 
