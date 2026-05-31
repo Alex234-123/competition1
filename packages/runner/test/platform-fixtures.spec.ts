@@ -1,19 +1,22 @@
+import { existsSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
 import { getAutomationAdapter } from "../src/platforms/registry.js";
 import type { AutomationMode, AutomationPlatformId, AutomationPublishRequest } from "../src/types.js";
 
-let browser: Browser;
+let browser: Browser | undefined;
+const hasChromium = existsSync(chromium.executablePath());
 
 beforeAll(async () => {
+  if (!hasChromium) return;
   browser = await chromium.launch({ headless: true });
 });
 
 afterAll(async () => {
-  await browser.close();
+  await browser?.close();
 });
 
-describe("platform automation adapters on fixture pages", () => {
+describe.skipIf(!hasChromium)("platform automation adapters on fixture pages", () => {
   for (const platformId of ["zhihu", "bilibili", "xiaohongshu"] as const) {
     it(`${platformId} fills fixture editor and does not publish in draft mode`, async () => {
       const page = await newFixturePage(platformId);
@@ -60,6 +63,7 @@ describe("platform automation adapters on fixture pages", () => {
 });
 
 async function newFixturePage(platformId: Exclude<AutomationPlatformId, "wechat">): Promise<Page> {
+  if (!browser) throw new Error("Playwright Chromium is unavailable for fixture tests");
   const page = await browser.newPage();
   await page.setContent(`
     <main data-platform="${platformId}">
