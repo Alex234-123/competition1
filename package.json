@@ -7,13 +7,15 @@
   "workspaces": [
     "packages/core",
     "packages/app",
-    "packages/server"
+    "packages/server",
+    "packages/runner"
   ],
   "scripts": {
     "build:core": "npm run build -w @mpp/core",
     "dev": "npm run dev -w @mpp/app",
     "build:ext": "npm run build:ext -w @mpp/app",
     "server": "npm run build:core && npm run dev -w @mpp/server",
+    "runner": "npm run dev -w @mpp/runner",
     "demo": "node scripts/demo.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
