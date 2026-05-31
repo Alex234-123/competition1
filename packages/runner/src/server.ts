@@ -8,6 +8,8 @@ import {
   type AutomationPublishReceipt,
   type AutomationPublishRequest,
 } from "./types.js";
+import { BrowserSessionManager } from "./browser/session.js";
+import { getAutomationAdapter } from "./platforms/registry.js";
 
 export type AutomationPublisher = (request: AutomationPublishRequest) => Promise<AutomationPublishReceipt>;
 
@@ -21,7 +23,8 @@ export interface RunnerAppOptions {
 export async function buildRunnerApp(options: RunnerAppOptions = {}): Promise<FastifyInstance> {
   const config = options.config ?? loadRunnerConfig();
   const app = Fastify({ logger: false });
-  const publisher = options.publisher ?? defaultPublisher;
+  const sessionManager = new BrowserSessionManager();
+  const publisher = options.publisher ?? ((request) => defaultPublisher(request, config, sessionManager));
 
   await app.register(cors, {
     origin: [/^http:\/\/localhost:\d+$/, /^http:\/\/127\.0\.0\.1:\d+$/, /^chrome-extension:\/\//],
@@ -72,12 +75,22 @@ export async function buildRunnerApp(options: RunnerAppOptions = {}): Promise<Fa
   return app;
 }
 
-async function defaultPublisher(request: AutomationPublishRequest): Promise<AutomationPublishReceipt> {
-  return {
-    ok: false,
-    status: "needs-user-action",
-    message: `No automation adapter is registered for ${request.platformId} yet.`,
-  };
+async function defaultPublisher(
+  request: AutomationPublishRequest,
+  config: RunnerConfig,
+  sessionManager: BrowserSessionManager,
+): Promise<AutomationPublishReceipt> {
+  const adapter = getAutomationAdapter(request.platformId);
+  const context = await sessionManager.open({
+    profilesRoot: config.profilesDir,
+    platformId: request.platformId,
+    profileDir: request.options?.profileDir,
+    headless: request.options?.headless,
+    slowMoMs: request.options?.slowMoMs,
+  });
+  const page = context.pages()[0] ?? (await context.newPage());
+  await page.goto(adapter.editorUrl, { waitUntil: "domcontentloaded", timeout: request.options?.timeoutMs ?? 60_000 });
+  return adapter.publish(page, request);
 }
 
 async function isPlaywrightAvailable(): Promise<boolean> {

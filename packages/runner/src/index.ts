@@ -20,3 +20,9 @@ export { buildRunnerApp, type AutomationPublisher, type RunnerAppOptions } from 
 export { loadRunnerConfig, type RunnerConfig } from "./config.js";
 export { BrowserSessionManager, resolveProfileDir, type BrowserSessionOptions } from "./browser/session.js";
 export { createRunArtifacts, redactForArtifact, type RunArtifacts } from "./diagnostics/artifacts.js";
+export {
+  getAutomationAdapter,
+  listAutomationAdapters,
+  registerAutomationAdapter,
+} from "./platforms/registry.js";
+export type { AutomationPlatformAdapter } from "./platforms/types.js";
