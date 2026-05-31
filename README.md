@@ -28,6 +28,9 @@ npm run build:ext
 
 # 可选服务端(图片图床 / 公众号真实发布时需要,默认不启)
 npm run server       # 需先在 packages/server 配置 .env
+
+# 可选 Playwright runner(知乎/B站/小红书网页端真实分发)
+npm run runner       # http://127.0.0.1:8790，仅使用本机浏览器登录态
 ```
 
 `npm run demo` 后查看 `dist/demo/`：`wechat.html`（内联样式、无 class/外链图）、`zhihu.html`（公式图片+保留外链）、`bilibili.html`（受限 HTML+分区）、`xiaohongshu.txt`（纯文本+#话题#+违禁词替换）、各平台 `*-cover.svg` 封面、`report.json`（校验与回执详情）。
@@ -43,6 +46,7 @@ monorepo（npm workspaces），三包 + 演示脚本：
 | **packages/core** | 纯 TS、零 DOM。IR 类型、MD→IR 解析、能力驱动变换库、适配器注册表+四平台适配器、HTML 净化、配置外置、图片重托管、校验器、两阶段 Publisher、同步引擎、OpenAI 兼容 LLM | 无（可被 app/server 共用） |
 | **packages/app** | 一套 React UI **双构建**：`dev` 即完整 Web 工具，`build:ext` 即 MV3 扩展。通过 `PlatformBridge` 隔离 `chrome.*`，含草稿持久化 / 图片上传 / AI 增强面板 | 浏览器 |
 | **packages/server** | 可选 Fastify 服务端，默认不启。持公众号密钥、跑 token 缓存、图片图床（local/s3/wechat）、限流 + 结构化日志 | Node 20+ |
+| **packages/runner** | 可选 Playwright 本机自动化 runner。复用用户本机浏览器登录态，打开真实创作者中心，填写内容并可在显式开启后点击发布 | Node 20+ / Chromium |
 
 ### 核心数据流
 
@@ -149,8 +153,22 @@ registerAdapter(new MyPlatformAdapter());
 - **默认全平台模拟发布**：`stage→confirm` 两阶段产出暂存产物+回执，安全可演示。
 - **公众号保留真实官方 API**：仅公众号有面向开发者的发布 API，链路为 `stable_token → 图片重托管 → draft/add`。
 - **扩展辅助发布**：content script 默认**写富文本到剪贴板**（`ClipboardItem` 同时给 `text/html`+`text/plain`），并额外尝试 **best-effort 注入**目标平台编辑器，失败自动降级回复制粘贴，**绝不自动点击「发布」**。
+- **Playwright 真实网页分发**：启动 `npm run runner` 后，可在设置面板把知乎/B站/小红书切到「自动填写并保存草稿」或「全自动点击发布」。runner 打开本机 Chromium 持久化 profile，复用用户登录态填写标题、正文、标签，并在 `full-auto` 模式点击最终发布按钮。
 
-> 知乎/B站/小红书对普通开发者**无发布 API**，非官方 cookie/RPA 有 ToS 与封号风险，故「模拟/暂存为默认」是唯一稳妥姿态。
+> 知乎/B站/小红书对普通开发者**无发布 API**。Playwright runner 是用户本机可控自动化：不保存账号密码，不绕过验证码/短信/人机/风险验证；遇到这些阻断会返回 `needs-user-action`，需要用户手动处理后重试。全自动点击发布有误发和平台风控风险，必须在设置里显式开启。
+
+启用 Playwright runner：
+
+```bash
+npm run runner
+```
+
+然后在 Web 工具「设置 → Playwright 真实分发」中确认 runner 地址为 `http://127.0.0.1:8790`，分别为知乎/B站/小红书选择：
+
+- `模拟发布`：默认安全回执。
+- `辅助复制/注入`：保留扩展辅助链路。
+- `自动填写并保存草稿`：打开创作者中心并填充内容，不点击最终发布。
+- `全自动点击发布`：填充后点击目标平台发布按钮；遇到登录或验证阻断立即停止。
 
 ---
 

@@ -28,6 +28,9 @@ export function App() {
   const llm = useStore((s) => s.llm);
   const enhance = useStore((s) => s.enhance);
   const serverUrl = useStore((s) => s.serverUrl);
+  const runnerUrl = useStore((s) => s.runnerUrl);
+  const wechatPublishMode = useStore((s) => s.wechatPublishMode);
+  const automationModes = useStore((s) => s.automationModes);
   const bridge = useStore((s) => s.bridge);
   const env = useStore((s) => s.bridge?.env);
   // 行为(action)引用恒定,用 useShallow 一次性取出,不引入额外渲染。
@@ -41,6 +44,9 @@ export function App() {
       setLlm: s.setLlm,
       setEnhance: s.setEnhance,
       setServerUrl: s.setServerUrl,
+      setRunnerUrl: s.setRunnerUrl,
+      setWechatPublishMode: s.setWechatPublishMode,
+      setAutomationMode: s.setAutomationMode,
       llmReady: s.llmReady,
       adapt: s.adapt,
       publishAll: s.publishAll,
@@ -207,9 +213,15 @@ export function App() {
           enhance={enhance}
           ready={ready}
           serverUrl={serverUrl}
+          runnerUrl={runnerUrl}
+          wechatPublishMode={wechatPublishMode}
+          automationModes={automationModes}
           onLlm={actions.setLlm}
           onEnhance={actions.setEnhance}
           onServerUrl={actions.setServerUrl}
+          onRunnerUrl={actions.setRunnerUrl}
+          onWechatPublishMode={actions.setWechatPublishMode}
+          onAutomationMode={actions.setAutomationMode}
         />
         <DraftsDrawer
           open={draftsOpen}

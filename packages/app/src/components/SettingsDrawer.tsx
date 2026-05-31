@@ -1,7 +1,9 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Switch from "@radix-ui/react-switch";
-import { X, Sparkles, KeyRound, Image } from "lucide-react";
+import { X, Sparkles, KeyRound, Image, Send } from "lucide-react";
 import type { EnhanceOptions } from "@mpp/core";
+import type { PlatformAutomationModes, WechatPublishMode } from "../state/store.js";
+import type { AutomationPublishMode } from "../bridge/types.js";
 
 interface LlmSettings {
   baseUrl: string;
@@ -16,9 +18,15 @@ interface Props {
   enhance: EnhanceOptions;
   ready: boolean;
   serverUrl: string;
+  runnerUrl: string;
+  wechatPublishMode: WechatPublishMode;
+  automationModes: PlatformAutomationModes;
   onLlm: (patch: Partial<LlmSettings>) => void;
   onEnhance: (patch: Partial<EnhanceOptions>) => void;
   onServerUrl: (url: string) => void;
+  onRunnerUrl: (url: string) => void;
+  onWechatPublishMode: (mode: WechatPublishMode) => void;
+  onAutomationMode: (platformId: string, mode: AutomationPublishMode) => void;
 }
 
 const ENHANCE_ITEMS: { key: keyof EnhanceOptions; title: string; desc: string }[] = [
@@ -36,9 +44,15 @@ export function SettingsDrawer({
   enhance,
   ready,
   serverUrl,
+  runnerUrl,
+  wechatPublishMode,
+  automationModes,
   onLlm,
   onEnhance,
   onServerUrl,
+  onRunnerUrl,
+  onWechatPublishMode,
+  onAutomationMode,
 }: Props) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -140,6 +154,68 @@ export function SettingsDrawer({
                 图片上传服务地址，本地开发默认 http://127.0.0.1:8787
               </small>
             </label>
+
+            <div style={{ borderTop: "1px solid var(--border)", margin: 0 }} />
+            <h3 style={{ fontSize: "var(--fs-sm)", fontWeight: 650, margin: 0, display: "flex", alignItems: "center", gap: "var(--sp-1)" }}>
+              <Send size={14} aria-hidden />
+              公众号发布
+            </h3>
+            <label className="field">
+              <span className="field-label">发布方式</span>
+              <select
+                className="field-input"
+                value={wechatPublishMode}
+                onChange={(e) => onWechatPublishMode(e.target.value as WechatPublishMode)}
+              >
+                <option value="mock">模拟发布</option>
+                <option value="draft">创建公众号草稿</option>
+                <option value="publish">提交公众号发布</option>
+              </select>
+              <small className="field-hint">
+                真实发布需要先启动本地 server，并在 server 的 .env 中配置 AppID/AppSecret。
+              </small>
+            </label>
+
+            <div style={{ borderTop: "1px solid var(--border)", margin: 0 }} />
+            <h3 style={{ fontSize: "var(--fs-sm)", fontWeight: 650, margin: 0, display: "flex", alignItems: "center", gap: "var(--sp-1)" }}>
+              <Send size={14} aria-hidden />
+              Playwright 真实分发
+            </h3>
+            <label className="field">
+              <span className="field-label">Runner 地址</span>
+              <input
+                className="field-input"
+                value={runnerUrl}
+                placeholder="http://127.0.0.1:8790"
+                onChange={(e) => onRunnerUrl(e.target.value)}
+              />
+              <small className="field-hint">
+                启动 `npm run runner` 后，知乎/B站/小红书可用本机浏览器登录态执行真实网页发布。
+              </small>
+            </label>
+            {[
+              ["zhihu", "知乎"],
+              ["bilibili", "B站"],
+              ["xiaohongshu", "小红书"],
+              ["wechat", "公众号网页兜底"],
+            ].map(([id, name]) => (
+              <label className="field" key={id}>
+                <span className="field-label">{name}</span>
+                <select
+                  className="field-input"
+                  value={automationModes[id] ?? "mock"}
+                  onChange={(e) => onAutomationMode(id, e.target.value as AutomationPublishMode)}
+                >
+                  <option value="mock">模拟发布</option>
+                  <option value="assist">辅助复制/注入</option>
+                  <option value="draft">自动填写并保存草稿</option>
+                  <option value="full-auto">全自动点击发布</option>
+                </select>
+              </label>
+            ))}
+            <small className="field-hint">
+              全自动发布会点击目标平台最终发布按钮；遇到登录、验证码、短信、人机或风险验证会停止并要求人工处理。
+            </small>
           </div>
         </Dialog.Content>
       </Dialog.Portal>

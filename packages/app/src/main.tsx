@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { App } from "./App.js";
 import { MockBridge } from "./bridge/mock-bridge.js";
 import { ChromeBridge } from "./bridge/chrome-bridge.js";
-import type { PlatformBridge } from "./bridge/types.js";
+import type { AutomationPublishMode, PlatformBridge } from "./bridge/types.js";
 import { useStore } from "./state/store.js";
 import { applyTheme } from "./styles/use-theme.js";
 import "./styles/index.css";
@@ -64,11 +64,10 @@ void bridge.getSetting("mpp.automationModes").then((raw) => {
   if (!raw) return;
   try {
     const saved = JSON.parse(raw) as Record<string, unknown>;
-    const valid = Object.fromEntries(
-      Object.entries(saved).filter(
-        ([, value]) => value === "mock" || value === "assist" || value === "draft" || value === "full-auto",
-      ),
-    );
+    const valid: Record<string, AutomationPublishMode> = {};
+    for (const [key, value] of Object.entries(saved)) {
+      if (isAutomationPublishMode(value)) valid[key] = value;
+    }
     useStore.setState((s) => ({ automationModes: { ...s.automationModes, ...valid } }));
   } catch {
     /* 忽略损坏的自动化发布设置 */
@@ -80,3 +79,7 @@ createRoot(document.getElementById("root")!).render(
     <App />
   </StrictMode>,
 );
+
+function isAutomationPublishMode(value: unknown): value is AutomationPublishMode {
+  return value === "mock" || value === "assist" || value === "draft" || value === "full-auto";
+}
