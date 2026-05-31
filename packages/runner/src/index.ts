@@ -16,3 +16,5 @@ export {
   isAutomationStatus,
   parseAutomationPublishRequest,
 } from "./types.js";
+export { buildRunnerApp, type AutomationPublisher, type RunnerAppOptions } from "./server.js";
+export { loadRunnerConfig, type RunnerConfig } from "./config.js";

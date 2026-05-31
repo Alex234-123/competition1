@@ -14,10 +14,15 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json && node dist/cli.js",
+    "start": "node dist/cli.js",
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@mpp/core": "*"
+    "@fastify/cors": "^10.0.1",
+    "@mpp/core": "*",
+    "fastify": "^5.2.0",
+    "playwright": "^1.57.0"
   },
   "devDependencies": {
     "@types/node": "^24.12.4"
