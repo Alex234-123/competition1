@@ -1,5 +1,5 @@
 import { mkdir } from "node:fs/promises";
-import { resolve } from "node:path";
+import { resolve, win32 } from "node:path";
 import { chromium, type BrowserContext } from "playwright";
 import type { AutomationPlatformId } from "../types.js";
 
@@ -11,8 +11,20 @@ export interface BrowserSessionOptions {
   readonly slowMoMs?: number;
 }
 
+function isWindowsAbsolutePath(value: string): boolean {
+  return /^[A-Za-z]:[\\/]/.test(value);
+}
+
 export function resolveProfileDir(root: string, platformId: AutomationPlatformId, override?: string): string {
-  return resolve(override ?? resolve(root, platformId));
+  if (override) {
+    return isWindowsAbsolutePath(override) ? win32.resolve(override) : resolve(override);
+  }
+
+  if (isWindowsAbsolutePath(root)) {
+    return win32.resolve(root, platformId);
+  }
+
+  return resolve(root, platformId);
 }
 
 export class BrowserSessionManager {
